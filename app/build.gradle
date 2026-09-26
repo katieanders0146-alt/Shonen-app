@@ -4,6 +4,17 @@ plugins {
 }
 
 android {
+    namespace 'com.marverick.shonen'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.marverick.shonen"
+        minSdk 24
+        targetSdk 34
+        versionCode 1
+        versionName "1.0"
+    }
+    
     signingConfigs {
     debug {
         storeFile file('debug.keystore')
