@@ -169,4 +169,4 @@ class RunActivity : AppCompatActivity() {
         fusedClient.removeLocationUpdates(locationCallback)
         handler.removeCallbacks(ticker)
     }
-}}
+}
