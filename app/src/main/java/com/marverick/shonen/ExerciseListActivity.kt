@@ -8,14 +8,13 @@ import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.Spinner
 import android.widget.TextView
-import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class ExerciseListActivity : AppCompatActivity() {
 
-    private val ranks = listOf("E-rank", "D-rank", "C-rank", "B-rank", "S-rank")
-    private val repTargets = listOf(20, 40, 60, 80, 100)
-    private val runKm = listOf(2, 4, 6, 8, 10)
+    private var ranks: List<String> = listOf("Default")
+    private var repTargets: List<Int> = listOf(20)
+    private var runKm: List<Int> = listOf(2)
     private var rankIndex = 0
 
     private lateinit var pushupButton: Button
@@ -29,6 +28,10 @@ class ExerciseListActivity : AppCompatActivity() {
 
         val characterName = intent.getStringExtra("character_name") ?: "Trainee"
         findViewById<TextView>(R.id.characterHeader).text = "Training as: $characterName"
+
+        ranks = intent.getStringArrayExtra("ranks")?.toList() ?: ranks
+        repTargets = intent.getIntArrayExtra("rep_targets")?.toList() ?: repTargets
+        runKm = intent.getIntArrayExtra("run_km")?.toList() ?: runKm
 
         pushupButton = findViewById(R.id.pushupButton)
         situpButton = findViewById(R.id.situpButton)
