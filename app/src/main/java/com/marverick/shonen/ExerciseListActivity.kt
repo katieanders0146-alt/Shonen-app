@@ -53,7 +53,9 @@ class ExerciseListActivity : AppCompatActivity() {
         situpButton.setOnClickListener { startTracker("situp") }
         squatButton.setOnClickListener { startTracker("squat") }
         runningButton.setOnClickListener {
-            Toast.makeText(this, "Running tracker is the next stage", Toast.LENGTH_SHORT).show()
+            val i = Intent(this, RunActivity::class.java)
+            i.putExtra("target_km", runKm[rankIndex])
+            startActivity(i)
         }
 
         refreshLabels()
