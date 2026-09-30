@@ -1,55 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
-    android:orientation="vertical"
-    android:padding="24dp">
+    android:layout_height="match_parent">
 
-    <TextView
-        android:id="@+id/characterHeader"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:textSize="20sp"
-        android:textStyle="bold"
-        android:layout_marginBottom="16dp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:text="Rank (sets your targets)"
-        android:layout_marginBottom="4dp" />
-
-    <Spinner
-        android:id="@+id/rankSpinner"
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginBottom="24dp" />
+        android:orientation="vertical"
+        android:padding="24dp">
 
-    <Button
-        android:id="@+id/pushupButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Push-up"
-        android:layout_marginBottom="12dp" />
+        <TextView
+            android:id="@+id/characterHeader"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="16dp" />
 
-    <Button
-        android:id="@+id/situpButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Sit-up"
-        android:layout_marginBottom="12dp" />
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Rank (sets your targets)"
+            android:layout_marginBottom="4dp" />
 
-    <Button
-        android:id="@+id/squatButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Squat"
-        android:layout_marginBottom="12dp" />
+        <Spinner
+            android:id="@+id/rankSpinner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="24dp" />
 
-    <Button
-        android:id="@+id/runningButton"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="10 km Running" />
+        <LinearLayout
+            android:id="@+id/exerciseContainer"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
 
-</LinearLayout>
+    </LinearLayout>
+</ScrollView>

@@ -15,7 +15,9 @@ class CharacterSelectActivity : AppCompatActivity() {
                 name = "Sung Jin-Woo",
                 ranks = arrayOf("E-rank", "D-rank", "C-rank", "B-rank", "A-rank", "S-rank"),
                 repTargets = intArrayOf(20, 35, 50, 65, 80, 100),
-                runKm = intArrayOf(2, 3, 4, 6, 8, 10)
+                runKm = intArrayOf(2, 3, 4, 6, 8, 10),
+                exerciseNames = arrayOf("Push-up", "Sit-up", "Squat", "10 km Running"),
+                exerciseTypes = arrayOf("pushup", "situp", "squat", "run")
             )
         }
         findViewById<Button>(R.id.saitamaButton).setOnClickListener {
@@ -23,17 +25,47 @@ class CharacterSelectActivity : AppCompatActivity() {
                 name = "Saitama",
                 ranks = arrayOf("C-Class", "B-Class", "A-Class", "S-Class"),
                 repTargets = intArrayOf(40, 60, 80, 100),
-                runKm = intArrayOf(4, 6, 8, 10)
+                runKm = intArrayOf(4, 6, 8, 10),
+                exerciseNames = arrayOf("Push-up", "Sit-up", "Squat", "10 km Running"),
+                exerciseTypes = arrayOf("pushup", "situp", "squat", "run")
+            )
+        }
+        findViewById<Button>(R.id.gokuButton).setOnClickListener {
+            openExercises(
+                name = "Goku",
+                ranks = arrayOf(
+                    "Base", "Kaio-ken", "Super Saiyan",
+                    "Super Saiyan 2", "Super Saiyan 3", "Super Saiyan Blue"
+                ),
+                repTargets = intArrayOf(20, 35, 50, 65, 80, 100),
+                runKm = intArrayOf(2, 3, 4, 6, 8, 10),
+                exerciseNames = arrayOf(
+                    "Martial-arts practice",
+                    "Strength/endurance conditioning",
+                    "Running/conditioning",
+                    "Turtle-shell loaded movement",
+                    "Gravity training"
+                ),
+                exerciseTypes = arrayOf("none", "none", "run", "none", "none")
             )
         }
     }
 
-    private fun openExercises(name: String, ranks: Array<String>, repTargets: IntArray, runKm: IntArray) {
+    private fun openExercises(
+        name: String,
+        ranks: Array<String>,
+        repTargets: IntArray,
+        runKm: IntArray,
+        exerciseNames: Array<String>,
+        exerciseTypes: Array<String>
+    ) {
         val intent = Intent(this, ExerciseListActivity::class.java)
         intent.putExtra("character_name", name)
         intent.putExtra("ranks", ranks)
         intent.putExtra("rep_targets", repTargets)
         intent.putExtra("run_km", runKm)
+        intent.putExtra("exercise_names", exerciseNames)
+        intent.putExtra("exercise_types", exerciseTypes)
         startActivity(intent)
     }
 }

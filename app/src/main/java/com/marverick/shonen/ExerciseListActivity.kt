@@ -6,8 +6,10 @@ import android.view.View
 import android.widget.AdapterView
 import android.widget.ArrayAdapter
 import android.widget.Button
+import android.widget.LinearLayout
 import android.widget.Spinner
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AppCompatActivity
 
 class ExerciseListActivity : AppCompatActivity() {
@@ -15,12 +17,10 @@ class ExerciseListActivity : AppCompatActivity() {
     private var ranks: List<String> = listOf("Default")
     private var repTargets: List<Int> = listOf(20)
     private var runKm: List<Int> = listOf(2)
+    private var exerciseNames: List<String> = listOf("Push-up")
+    private var exerciseTypes: List<String> = listOf("pushup")
     private var rankIndex = 0
-
-    private lateinit var pushupButton: Button
-    private lateinit var situpButton: Button
-    private lateinit var squatButton: Button
-    private lateinit var runningButton: Button
+    private val exerciseButtons = mutableListOf<Pair<Button, String>>()
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -32,11 +32,8 @@ class ExerciseListActivity : AppCompatActivity() {
         ranks = intent.getStringArrayExtra("ranks")?.toList() ?: ranks
         repTargets = intent.getIntArrayExtra("rep_targets")?.toList() ?: repTargets
         runKm = intent.getIntArrayExtra("run_km")?.toList() ?: runKm
-
-        pushupButton = findViewById(R.id.pushupButton)
-        situpButton = findViewById(R.id.situpButton)
-        squatButton = findViewById(R.id.squatButton)
-        runningButton = findViewById(R.id.runningButton)
+        exerciseNames = intent.getStringArrayExtra("exercise_names")?.toList() ?: exerciseNames
+        exerciseTypes = intent.getStringArrayExtra("exercise_types")?.toList() ?: exerciseTypes
 
         val rankSpinner = findViewById<Spinner>(R.id.rankSpinner)
         rankSpinner.adapter =
@@ -52,30 +49,58 @@ class ExerciseListActivity : AppCompatActivity() {
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
-        pushupButton.setOnClickListener { startTracker("pushup") }
-        situpButton.setOnClickListener { startTracker("situp") }
-        squatButton.setOnClickListener { startTracker("squat") }
-        runningButton.setOnClickListener {
-            val i = Intent(this, RunActivity::class.java)
-            i.putExtra("target_km", runKm[rankIndex])
-            startActivity(i)
-        }
-
+        buildExerciseButtons()
         refreshLabels()
     }
 
-    private fun refreshLabels() {
-        val reps = repTargets[rankIndex]
-        pushupButton.text = "Push-up: $reps reps"
-        situpButton.text = "Sit-up: $reps reps"
-        squatButton.text = "Squat: $reps reps"
-        runningButton.text = "Run: ${runKm[rankIndex]} km"
+    private fun buildExerciseButtons() {
+        val container = findViewById<LinearLayout>(R.id.exerciseContainer)
+        container.removeAllViews()
+        exerciseButtons.clear()
+
+        for (i in exerciseNames.indices) {
+            val type = exerciseTypes.getOrElse(i) { "none" }
+            val button = Button(this)
+            val params = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            params.bottomMargin = 24
+            button.layoutParams = params
+            button.setOnClickListener { onExerciseTapped(type) }
+            container.addView(button)
+            exerciseButtons.add(button to type)
+        }
     }
 
-    private fun startTracker(exercise: String) {
-        val i = Intent(this, MainActivity::class.java)
-        i.putExtra("exercise", exercise)
-        i.putExtra("target", repTargets[rankIndex])
-        startActivity(i)
+    private fun onExerciseTapped(type: String) {
+        when (type) {
+            "pushup", "situp", "squat" -> {
+                val i = Intent(this, MainActivity::class.java)
+                i.putExtra("exercise", type)
+                i.putExtra("target", repTargets[rankIndex])
+                startActivity(i)
+            }
+            "run" -> {
+                val i = Intent(this, RunActivity::class.java)
+                i.putExtra("target_km", runKm[rankIndex])
+                startActivity(i)
+            }
+            else -> {
+                Toast.makeText(this, "Tracking coming soon for this training method", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    private fun refreshLabels() {
+        for (i in exerciseButtons.indices) {
+            val (button, type) = exerciseButtons[i]
+            val name = exerciseNames.getOrElse(i) { "Exercise" }
+            button.text = when (type) {
+                "pushup", "situp", "squat" -> "$name: ${repTargets[rankIndex]} reps"
+                "run" -> "$name: ${runKm[rankIndex]} km"
+                else -> "$name (coming soon)"
+            }
+        }
     }
 }

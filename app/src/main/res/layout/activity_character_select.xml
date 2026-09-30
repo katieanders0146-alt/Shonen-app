@@ -25,6 +25,13 @@
         android:id="@+id/saitamaButton"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Saitama — One-Punch Man" />
+        android:text="Saitama — One-Punch Man"
+        android:layout_marginBottom="16dp" />
+
+    <Button
+        android:id="@+id/gokuButton"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Goku — Dragon Ball" />
 
 </LinearLayout>
