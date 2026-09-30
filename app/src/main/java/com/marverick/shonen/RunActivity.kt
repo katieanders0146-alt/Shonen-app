@@ -1,13 +1,16 @@
 package com.marverick.shonen
 
 import android.Manifest
-import android.annotation.SuppressLint
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
 import android.content.pm.PackageManager
-import android.location.Location
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
+import android.os.IBinder
 import android.os.Looper
-import android.os.SystemClock
 import android.view.WindowManager
 import android.widget.Button
 import android.widget.TextView
@@ -15,11 +18,6 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
-import com.google.android.gms.location.LocationCallback
-import com.google.android.gms.location.LocationRequest
-import com.google.android.gms.location.LocationResult
-import com.google.android.gms.location.LocationServices
-import com.google.android.gms.location.Priority
 
 class RunActivity : AppCompatActivity() {
 
@@ -31,26 +29,26 @@ class RunActivity : AppCompatActivity() {
 
     private var targetKm = 2
     private var running = false
-    private var totalMeters = 0f
-    private var lastAccepted: Location? = null
-    private var startTime = 0L
+    private var boundService: RunTrackingService? = null
     private var targetAnnounced = false
 
-    private val fusedClient by lazy { LocationServices.getFusedLocationProviderClient(this) }
     private val handler = Handler(Looper.getMainLooper())
-
     private val ticker = object : Runnable {
         override fun run() {
-            if (running) {
-                updateDisplay()
-                handler.postDelayed(this, 1000)
-            }
+            refreshFromService()
+            if (running) handler.postDelayed(this, 1000)
         }
     }
 
-    private val locationCallback = object : LocationCallback() {
-        override fun onLocationResult(result: LocationResult) {
-            for (loc in result.locations) handleLocation(loc)
+    private val connection = object : ServiceConnection {
+        override fun onServiceConnected(name: ComponentName?, binder: IBinder?) {
+            boundService = (binder as RunTrackingService.LocalBinder).getService()
+            boundService?.setListener { refreshFromService() }
+            refreshFromService()
+        }
+
+        override fun onServiceDisconnected(name: ComponentName?) {
+            boundService = null
         }
     }
 
@@ -62,6 +60,9 @@ class RunActivity : AppCompatActivity() {
                 statusText.text = "Precise location permission is needed to track your run"
             }
         }
+
+    private val notificationPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -77,6 +78,22 @@ class RunActivity : AppCompatActivity() {
         targetKm = intent.getIntExtra("target_km", 2)
         distanceText.text = String.format("%.2f / %d km", 0f, targetKm)
 
+        if (Build.VERSION.SDK_INT >= 33 &&
+            ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS)
+            != PackageManager.PERMISSION_GRANTED
+        ) {
+            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+        }
+
+        // If a run is already in progress (e.g. you reopened the app after the screen was off),
+        // reconnect to it instead of starting fresh.
+        val alreadyRunning = bindService(Intent(this, RunTrackingService::class.java), connection, 0)
+        if (alreadyRunning) {
+            running = true
+            startButton.text = "Finish"
+            handler.post(ticker)
+        }
+
         startButton.setOnClickListener {
             if (running) finishRun() else startRun()
         }
@@ -89,84 +106,61 @@ class RunActivity : AppCompatActivity() {
             beginRun()
         } else {
             permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_FINE_LOCATION,
-                    Manifest.permission.ACCESS_COARSE_LOCATION
-                )
+                arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
             )
         }
     }
 
-    @SuppressLint("MissingPermission")
     private fun beginRun() {
-        totalMeters = 0f
-        lastAccepted = null
         targetAnnounced = false
-        startTime = SystemClock.elapsedRealtime()
         running = true
         startButton.text = "Finish"
         statusText.text = "Waiting for GPS signal..."
 
-        val request = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 1000L)
-            .setMinUpdateIntervalMillis(1000L)
-            .build()
-        fusedClient.requestLocationUpdates(request, locationCallback, Looper.getMainLooper())
+        val serviceIntent = Intent(this, RunTrackingService::class.java)
+        serviceIntent.putExtra("target_km", targetKm)
+        ContextCompat.startForegroundService(this, serviceIntent)
+        bindService(serviceIntent, connection, Context.BIND_AUTO_CREATE)
+
         handler.post(ticker)
     }
 
-    private fun handleLocation(loc: Location) {
-        if (!running) return
-        if (!loc.hasAccuracy() || loc.accuracy > 25f) {
-            statusText.text = "Weak GPS signal, keep going..."
-            return
-        }
-        statusText.text = "Tracking"
-
-        val last = lastAccepted
-        if (last == null) {
-            lastAccepted = loc
-            return
-        }
-
-        val step = loc.distanceTo(last)
-        val seconds = (loc.elapsedRealtimeNanos - last.elapsedRealtimeNanos) / 1_000_000_000f
-        if (seconds > 0f && step / seconds > 12f) return
-
-        if (step >= 5f) {
-            totalMeters += step
-            lastAccepted = loc
-            updateDisplay()
-            if (!targetAnnounced && totalMeters >= targetKm * 1000f) {
-                targetAnnounced = true
-                Toast.makeText(this, "Distance target reached!", Toast.LENGTH_LONG).show()
-            }
-        }
-    }
-
-    private fun updateDisplay() {
-        val km = totalMeters / 1000f
+    private fun refreshFromService() {
+        val service = boundService ?: return
+        val km = service.totalMeters / 1000f
         distanceText.text = String.format("%.2f / %d km", km, targetKm)
-        val seconds = ((SystemClock.elapsedRealtime() - startTime) / 1000).toInt()
-        timeText.text = String.format("%02d:%02d", seconds / 60, seconds % 60)
+        statusText.text = service.trackingStatus
+
+        val elapsed = ((System.currentTimeMillis() - service.startTimeMs) / 1000).toInt()
+        timeText.text = String.format("%02d:%02d", elapsed / 60, elapsed % 60)
+
         if (km >= 0.05f) {
-            val paceSec = (seconds / km).toInt()
+            val paceSec = (elapsed / km).toInt()
             paceText.text = String.format("Pace: %d:%02d /km", paceSec / 60, paceSec % 60)
+        }
+
+        if (!targetAnnounced && km >= targetKm) {
+            targetAnnounced = true
+            Toast.makeText(this, "Distance target reached!", Toast.LENGTH_LONG).show()
         }
     }
 
     private fun finishRun() {
-        updateDisplay()
         running = false
-        fusedClient.removeLocationUpdates(locationCallback)
-        handler.removeCallbacks(ticker)
+        boundService?.stopTracking()
+        try { unbindService(connection) } catch (e: IllegalArgumentException) { }
+        boundService = null
         startButton.text = "Start"
         statusText.text = "Run finished"
     }
 
     override fun onDestroy() {
         super.onDestroy()
-        running = false
-        fusedClient.removeLocationUpdates(locationCallback)
         handler.removeCallbacks(ticker)
+        if (boundService != null) {
+            try { unbindService(connection) } catch (e: IllegalArgumentException) { }
+        }
+        // Deliberately NOT stopping the service here — tracking should keep going
+        // even if this screen closes or the phone screen turns off.
     }
 }
