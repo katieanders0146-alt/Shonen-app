@@ -4,11 +4,16 @@ import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.location.Location
+import android.media.AudioAttributes
 import android.os.Binder
 import android.os.Build
 import android.os.IBinder
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationRequest
@@ -32,6 +37,8 @@ class RunTrackingService : Service() {
 
     private var lastAccepted: Location? = null
     private var listener: (() -> Unit)? = null
+    private var halfwayVibrated = false
+    private var completeVibrated = false
 
     inner class LocalBinder : Binder() {
         fun getService(): RunTrackingService = this@RunTrackingService
@@ -54,6 +61,8 @@ class RunTrackingService : Service() {
     private fun startTracking() {
         totalMeters = 0f
         lastAccepted = null
+        halfwayVibrated = false
+        completeVibrated = false
         startTimeMs = System.currentTimeMillis()
         trackingStatus = "Waiting for GPS signal..."
 
@@ -98,8 +107,45 @@ class RunTrackingService : Service() {
             totalMeters += step
             lastAccepted = loc
             updateNotification()
+            checkVibrationMilestones()
         }
         listener?.invoke()
+    }
+
+    private fun checkVibrationMilestones() {
+        val targetMeters = targetKm * 1000f
+        if (!halfwayVibrated && totalMeters >= targetMeters / 2f) {
+            halfwayVibrated = true
+            vibrate(SHORT_VIBRATION_MS)
+        }
+        if (!completeVibrated && totalMeters >= targetMeters) {
+            completeVibrated = true
+            vibrate(LONG_VIBRATION_MS)
+        }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun vibrate(durationMs: Long) {
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            (getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager).defaultVibrator
+        } else {
+            getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+        if (!vibrator.hasVibrator()) return
+
+        // Alarm usage is used because Android limits vibration from background apps
+        // to alarm, ringtone and notification types.
+        val attrs = AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_ALARM)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val effect = VibrationEffect.createOneShot(durationMs, VibrationEffect.DEFAULT_AMPLITUDE)
+            vibrator.vibrate(effect, attrs)
+        } else {
+            vibrator.vibrate(durationMs, attrs)
+        }
     }
 
     fun stopTracking() {
@@ -136,5 +182,7 @@ class RunTrackingService : Service() {
 
     companion object {
         const val NOTIFICATION_ID = 1001
+        const val SHORT_VIBRATION_MS = 400L
+        const val LONG_VIBRATION_MS = 1500L
     }
 }

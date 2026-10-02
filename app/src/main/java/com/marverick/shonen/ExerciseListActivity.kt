@@ -17,6 +17,7 @@ class ExerciseListActivity : AppCompatActivity() {
     private var ranks: List<String> = listOf("Default")
     private var repTargets: List<Int> = listOf(20)
     private var runKm: List<Int> = listOf(2)
+    private var timerMinutes: List<Int> = listOf(15)
     private var exerciseNames: List<String> = listOf("Push-up")
     private var exerciseTypes: List<String> = listOf("pushup")
     private var rankIndex = 0
@@ -32,20 +33,17 @@ class ExerciseListActivity : AppCompatActivity() {
         ranks = intent.getStringArrayExtra("ranks")?.toList() ?: ranks
         repTargets = intent.getIntArrayExtra("rep_targets")?.toList() ?: repTargets
         runKm = intent.getIntArrayExtra("run_km")?.toList() ?: runKm
+        timerMinutes = intent.getIntArrayExtra("timer_minutes")?.toList() ?: timerMinutes
         exerciseNames = intent.getStringArrayExtra("exercise_names")?.toList() ?: exerciseNames
         exerciseTypes = intent.getStringArrayExtra("exercise_types")?.toList() ?: exerciseTypes
 
         val rankSpinner = findViewById<Spinner>(R.id.rankSpinner)
-        rankSpinner.adapter =
-            ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, ranks)
+        rankSpinner.adapter = ArrayAdapter(this, android.R.layout.simple_spinner_dropdown_item, ranks)
         rankSpinner.onItemSelectedListener = object : AdapterView.OnItemSelectedListener {
-            override fun onItemSelected(
-                parent: AdapterView<*>?, view: View?, position: Int, id: Long
-            ) {
+            override fun onItemSelected(parent: AdapterView<*>?, view: View?, position: Int, id: Long) {
                 rankIndex = position
                 refreshLabels()
             }
-
             override fun onNothingSelected(parent: AdapterView<*>?) {}
         }
 
@@ -59,21 +57,22 @@ class ExerciseListActivity : AppCompatActivity() {
         exerciseButtons.clear()
 
         for (i in exerciseNames.indices) {
-            val type = exerciseTypes.getOrElse(i) { "none" }
             val button = Button(this)
             val params = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
+                LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT
             )
             params.bottomMargin = 24
             button.layoutParams = params
-            button.setOnClickListener { onExerciseTapped(type) }
+            val index = i
+            button.setOnClickListener { onExerciseTapped(index) }
             container.addView(button)
-            exerciseButtons.add(button to type)
+            exerciseButtons.add(button to exerciseTypes.getOrElse(i) { "none" })
         }
     }
 
-    private fun onExerciseTapped(type: String) {
+    private fun onExerciseTapped(index: Int) {
+        val type = exerciseTypes.getOrElse(index) { "none" }
+        val name = exerciseNames.getOrElse(index) { "Exercise" }
         when (type) {
             "pushup", "situp", "squat" -> {
                 val i = Intent(this, MainActivity::class.java)
@@ -86,9 +85,19 @@ class ExerciseListActivity : AppCompatActivity() {
                 i.putExtra("target_km", runKm[rankIndex])
                 startActivity(i)
             }
-            else -> {
-                Toast.makeText(this, "Tracking coming soon for this training method", Toast.LENGTH_SHORT).show()
+            "circuit" -> {
+                val i = Intent(this, CircuitActivity::class.java)
+                i.putExtra("steps", arrayOf("pushup", "squat", "situp"))
+                i.putExtra("target", repTargets[rankIndex])
+                startActivity(i)
             }
+            "timer" -> {
+                val i = Intent(this, TimerActivity::class.java)
+                i.putExtra("label", name)
+                i.putExtra("target_minutes", timerMinutes.getOrElse(rankIndex) { 15 })
+                startActivity(i)
+            }
+            else -> Toast.makeText(this, "Tracking coming soon for this training method", Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -99,6 +108,8 @@ class ExerciseListActivity : AppCompatActivity() {
             button.text = when (type) {
                 "pushup", "situp", "squat" -> "$name: ${repTargets[rankIndex]} reps"
                 "run" -> "$name: ${runKm[rankIndex]} km"
+                "circuit" -> "$name: ${repTargets[rankIndex]} reps each (push-up/squat/sit-up)"
+                "timer" -> "$name: ${timerMinutes.getOrElse(rankIndex) { 15 }} min"
                 else -> "$name (coming soon)"
             }
         }
